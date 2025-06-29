@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Time Since Counters</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background: black;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      font-size: 6vw;
+      margin-top: 10px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 90%;
+      max-width: 400px;
+      padding: 10px;
+    }
+    input, button {
+      font-size: 5vw;
+      padding: 10px;
+    }
+    .counters {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      margin-top: 20px;
+    }
+    .counter {
+      background: #111;
+      margin: 10px;
+      padding: 10px;
+      border-radius: 10px;
+      width: 90%;
+      font-size: 5vw;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 4.5vw;
+      color: #0ff;
+      cursor: pointer;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+    }
+    .time {
+      font-weight: bold;
+      color: #f44;
+      margin-top: 5px;
+      display: none;
+    }
+    .delete-btn {
+      font-size: 4vw;
+      background: #f33;
+      border: none;
+      color: white;
+      border-radius: 5px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Time Since</h1>
+
+<form id="addCounterForm">
+  <input type="datetime-local" id="datetimeInput" required>
+  <input type="text" id="labelInput" placeholder="Label (hal. Birthday)" required>
+  <button type="submit">Magdagdag</button>
+</form>
+
+<div class="counters" id="countersContainer"></div>
+
+<script>
+  const form = document.getElementById("addCounterForm");
+  const datetimeInput = document.getElementById("datetimeInput");
+  const labelInput = document.getElementById("labelInput");
+  const container = document.getElementById("countersContainer");
+
+  let counters = JSON.parse(localStorage.getItem("counters") || "[]");
+
+  function saveCounters() {
+    localStorage.setItem("counters", JSON.stringify(counters));
+  }
+
+  function formatElapsed(ms) {
+    if (ms < 0) return "Hindi pa nagsisimula";
+
+    let totalSeconds = Math.floor(ms / 1000);
+    const msPart = ms % 1000;
+    const seconds = totalSeconds % 60;
+    totalSeconds = Math.floor(totalSeconds / 60);
+    const minutes = totalSeconds % 60;
+    totalSeconds = Math.floor(totalSeconds / 60);
+    const hours = totalSeconds % 24;
+    const daysTotal = Math.floor(totalSeconds / 24);
+
+    const years = Math.floor(daysTotal / 365);
+    const months = Math.floor((daysTotal % 365) / 30);
+    const days = (daysTotal % 365) % 30;
+
+    return `${years}y ${months}m ${days}d ${hours}h ${minutes}m ${seconds}s ${msPart.toString().padStart(3,'0')}ms`;
+  }
+
+  function createCounterElement(counter, index) {
+    const div = document.createElement("div");
+    div.className = "counter";
+    div.innerHTML = `
+      <div class="header" onclick="toggleTime(${index})">
+        <span>${counter.label}</span>
+        <div class="controls">
+          <button class="delete-btn" onclick="deleteCounter(event, ${index})">X</button>
+        </div>
+      </div>
+      <div class="time" id="counter-${index}">...</div>
+    `;
+    return div;
+  }
+
+  function toggleTime(index) {
+    const el = document.getElementById("counter-" + index);
+    if (el) el.style.display = el.style.display === "none" ? "block" : "none";
+  }
+
+  function deleteCounter(e, index) {
+    e.stopPropagation();
+    counters.splice(index, 1);
+    saveCounters();
+    renderAllCounters();
+  }
+
+  function updateCounters() {
+    counters.forEach((counter, index) => {
+      const now = new Date();
+      const past = new Date(counter.datetime);
+      const diff = now - past;
+      const el = document.getElementById("counter-" + index);
+      if (el) {
+        el.textContent = formatElapsed(diff);
+      }
+    });
+  }
+
+  function renderAllCounters() {
+    container.innerHTML = "";
+    counters.forEach((counter, index) => {
+      const el = createCounterElement(counter, index);
+      container.appendChild(el);
+    });
+    updateCounters();
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const datetime = datetimeInput.value;
+    const label = labelInput.value.trim();
+    if (!datetime || !label) return;
+
+    counters.push({ datetime, label });
+    saveCounters();
+    renderAllCounters();
+    form.reset();
+  });
+
+  renderAllCounters();
+  setInterval(updateCounters, 100);
+</script>
+
+</body>
+</html>
